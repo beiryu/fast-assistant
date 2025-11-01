@@ -119,7 +119,7 @@ export class TranslationEngine {
         // Cache result (with LRU-like eviction)
         if (translationCache.size >= MAX_CACHE_SIZE) {
           // Remove oldest entry (first key)
-          const firstKey = translationCache.keys().next().value;
+          const firstKey = translationCache.keys().next().value ?? '';
           translationCache.delete(firstKey);
         }
         translationCache.set(cacheKey, result);

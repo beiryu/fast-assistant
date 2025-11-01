@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "env-check": "node scripts/verify-env.js",
     "electron": "wait-on http://localhost:8081 && cross-env ELECTRON_IS_DEV=1 electron electron/main.js",
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:8081 && cross-env ELECTRON_IS_DEV=1 electron electron/main.js\"",
     "build:web": "expo export -p web --output-dir dist",
