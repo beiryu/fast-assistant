@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Clipboard,
-  Keyboard,
   Platform,
   StyleSheet,
   Text,
@@ -244,16 +243,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     }
   };
 
-  const handleClose = () => {
-    Keyboard.dismiss();
-    
-    // If in Electron, hide the window via IPC
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI) {
-      window.electronAPI.hideWindow();
-    } else {
-      onClose?.();
-    }
-  };
 
   return (
     <View 
