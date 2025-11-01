@@ -44,6 +44,13 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     return () => clearTimeout(focusTimer);
   }, []);
 
+  // Reset input height when input is cleared
+  useEffect(() => {
+    if (currentInput.length === 0) {
+      setInputHeight(MIN_INPUT_HEIGHT);
+    }
+  }, [currentInput]);
+
   // Handle window visibility changes (when shown via hotkey)
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI) {
@@ -75,6 +82,34 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       };
     }
   }, []);
+
+  const handleInputChange = (text: string) => {
+    // Enforce character limit
+    if (text.length <= MAX_CHARACTERS) {
+      setInput(text);
+    } else {
+      // If user tries to paste text exceeding limit, truncate it
+      const truncated = text.substring(0, MAX_CHARACTERS);
+      setInput(truncated);
+      setError(`Character limit reached. Maximum ${MAX_CHARACTERS} characters allowed.`);
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleContentSizeChange = (event: any) => {
+    const { height } = event.nativeEvent.contentSize;
+    // Calculate height based on content
+    // Add padding (12 top + 12 bottom = 24) and some extra for better UX
+    // Limit to MAX_INPUT_HEIGHT (approximately 10 lines)
+    const contentHeight = height;
+    const padding = 24; // 12px top + 12px bottom
+    const newHeight = Math.max(
+      MIN_INPUT_HEIGHT,
+      Math.min(MAX_INPUT_HEIGHT, contentHeight + padding)
+    );
+    setInputHeight(newHeight);
+  };
 
   const handleTranslate = async () => {
     if (!currentInput.trim()) return;
@@ -126,28 +161,53 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
 
         {/* Input Section */}
         <View style={styles.inputSection}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            placeholder="Type mixed Vietnamese-English..."
-            placeholderTextColor="#9CA3AF"
-            value={currentInput}
-            onChangeText={setInput}
-            multiline
-            autoFocus
-            autoCapitalize="sentences"
-            autoCorrect={true}
-            textAlignVertical="top"
-            maxLength={500}
-          />
-          {currentInput.length > 0 && (
-            <TouchableOpacity 
-              onPress={() => setInput('')} 
-              style={styles.clearButton}
+          <View style={styles.inputWrapper}>
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, { height: inputHeight }]}
+              placeholder="Type your message in Vietnamese, English, or mixed... (e.g., Tôi muốn confirm về meeting tomorrow)"
+              placeholderTextColor="#9CA3AF"
+              value={currentInput}
+              onChangeText={handleInputChange}
+              onContentSizeChange={handleContentSizeChange}
+              multiline
+              autoFocus
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              textAlignVertical="top"
+              maxLength={MAX_CHARACTERS}
+              // Ensure proper handling of Vietnamese characters
+              keyboardType="default"
+            />
+            {currentInput.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => {
+                  setInput('');
+                  setInputHeight(MIN_INPUT_HEIGHT);
+                }} 
+                style={styles.clearButton}
+              >
+                <Text style={styles.clearButtonText}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* Character Counter */}
+          <View style={styles.characterCounterWrapper}>
+            <Text 
+              style={[
+                styles.characterCounter,
+                currentInput.length >= MAX_CHARACTERS && styles.characterCounterWarning,
+                currentInput.length > MAX_CHARACTERS * 0.9 && styles.characterCounterNearLimit
+              ]}
             >
-              <Text style={styles.clearButtonText}>Clear</Text>
-            </TouchableOpacity>
-          )}
+              {currentInput.length} / {MAX_CHARACTERS} characters
+              {currentInput.length > 0 && (
+                <Text style={styles.characterCounterRemaining}>
+                  {' '}({MAX_CHARACTERS - currentInput.length} remaining)
+                </Text>
+              )}
+            </Text>
+          </View>
         </View>
 
         {/* Error Display */}
@@ -247,16 +307,39 @@ const styles = StyleSheet.create({
   inputSection: {
     marginBottom: 12,
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    lineHeight: LINE_HEIGHT,
     color: '#111827',
     backgroundColor: '#FFFFFF',
-    minHeight: 100,
-    maxHeight: 200,
+    minHeight: MIN_INPUT_HEIGHT,
+    maxHeight: MAX_INPUT_HEIGHT,
+  },
+  characterCounterWrapper: {
+    marginTop: 6,
+    alignItems: 'flex-end',
+  },
+  characterCounter: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  characterCounterNearLimit: {
+    color: '#F59E0B', // Amber for warning
+  },
+  characterCounterWarning: {
+    color: '#DC2626', // Red for limit reached
+    fontWeight: '600',
+  },
+  characterCounterRemaining: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   clearButton: {
     alignSelf: 'flex-end',
