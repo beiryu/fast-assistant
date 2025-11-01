@@ -9,6 +9,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useTranslationStore } from '@/stores/translationStore';
+import { translationEngine, TranslationError } from '@/lib/translationEngine';
 
 interface TranslationPopupProps {
   onClose?: () => void;
@@ -50,6 +51,56 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       setInputHeight(MIN_INPUT_HEIGHT);
     }
   }, [currentInput]);
+
+  // Keyboard shortcut: Enter to translate (Cmd/Ctrl+Enter)
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Cmd/Ctrl + Enter to translate
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          if (!isLoading && currentInput.trim()) {
+            // Call translate function
+            const inputText = currentInput.trim();
+            if (inputText) {
+              setLoading(true);
+              setError(null);
+              setOutput('');
+              
+              translationEngine.translate(inputText)
+                .then(result => {
+                  setOutput(result.output);
+                  setLoading(false);
+                })
+                .catch(err => {
+                  setLoading(false);
+                  if (err instanceof TranslationError) {
+                    let errorMessage = err.message;
+                    if (err.retryable) {
+                      errorMessage += ' You can try again in a moment.';
+                    }
+                    setError(errorMessage);
+                  } else {
+                    setError(err.message || 'Translation failed. Please try again.');
+                  }
+                });
+            }
+          }
+        }
+        // Escape to clear error or close
+        if (e.key === 'Escape') {
+          if (error) {
+            setError(null);
+          } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI) {
+            window.electronAPI.hideWindow();
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isLoading, currentInput, error, setLoading, setError, setOutput]);
 
   // Handle window visibility changes (when shown via hotkey)
   useEffect(() => {
@@ -112,17 +163,47 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
   };
 
   const handleTranslate = async () => {
-    if (!currentInput.trim()) return;
+    const inputText = currentInput.trim();
+    if (!inputText) {
+      setError('Please enter some text to translate');
+      return;
+    }
     
     setLoading(true);
     setError(null);
+    setOutput(''); // Clear previous output
     
-    // TODO: Implement translation API call in US-1.3
-    // For now, just show placeholder
-    setTimeout(() => {
-      setOutput('Translation will be implemented in US-1.3');
+    try {
+      const result = await translationEngine.translate(inputText);
+      
+      // Check if result was cached
+      if (result.cached) {
+        console.log('Translation served from cache');
+      }
+      
+      // Update output with translation
+      setOutput(result.output);
       setLoading(false);
-    }, 500);
+    } catch (error) {
+      console.error('Translation error:', error);
+      setLoading(false);
+      
+      // Handle different error types with user-friendly messages
+      if (error instanceof TranslationError) {
+        let errorMessage = error.message;
+        
+        // Add retry suggestion for retryable errors
+        if (error.retryable) {
+          errorMessage += ' You can try again in a moment.';
+        }
+        
+        setError(errorMessage);
+      } else if (error instanceof Error) {
+        setError(error.message || 'Translation failed. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    }
   };
 
   const handleCopy = async () => {
@@ -231,6 +312,14 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
           </Text>
         </TouchableOpacity>
 
+        {/* Loading Indicator */}
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <View style={styles.loadingSpinner} />
+            <Text style={styles.loadingText}>Translating your text...</Text>
+          </View>
+        )}
+
         {/* Output Section */}
         {currentOutput && (
           <View style={styles.outputSection}>
@@ -249,8 +338,8 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
         {/* Footer Hint */}
         <Text style={styles.footerHint}>
           {Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI
-            ? 'Press Cmd/Ctrl+Shift+T to toggle'
-            : 'Press Esc to close'}
+            ? 'Press Cmd/Ctrl+Shift+T to toggle • Cmd/Ctrl+Enter to translate'
+            : 'Press Esc to close • Cmd/Ctrl+Enter to translate'}
         </Text>
       </View>
     </View>
@@ -420,6 +509,27 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 8,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  loadingSpinner: {
+    width: 16,
+    height: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderTopColor: '#2563EB',
+    borderRadius: 8,
+    marginRight: 8,
+    // Animation will be handled by platform (web has CSS animation)
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 });
 

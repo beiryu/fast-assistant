@@ -21,5 +21,11 @@ config.resolver.resolverMainFields = [
 config.watchFolders = [__dirname];
 config.resolver.sourceExts = [...(config.resolver.sourceExts || []), 'jsx', 'js', 'ts', 'tsx'];
 
+// Handle WASM files for expo-sqlite
+// Keep WASM as an asset extension so Metro treats it correctly
+if (!config.resolver.assetExts.includes('wasm')) {
+  config.resolver.assetExts.push('wasm');
+}
+
 module.exports = config;
 
