@@ -15,6 +15,14 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        // Hide tab bar completely - we only show TranslationPopup
+        tabBarStyle: { 
+          display: 'none', 
+          height: 0, 
+          opacity: 0,
+          position: 'absolute',
+          pointerEvents: 'none',
+        },
       }}>
       <Tabs.Screen
         name="index"

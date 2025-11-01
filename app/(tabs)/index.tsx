@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import { TranslationPopup } from '@/components/TranslationPopup';
+import { Platform, StyleSheet, View } from 'react-native';
 
 declare global {
   interface Window {
@@ -15,14 +15,24 @@ declare global {
 }
 
 export default function HomeScreen() {
-  // For desktop (Electron), show TranslationPopup directly
-  // For mobile, this will be handled differently in future sprints
-  const isElectron = Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI;
 
-  if (isElectron || Platform.OS === 'web') {
-    return <TranslationPopup />;
-  }
-
-  // Mobile screens will be implemented in later sprints
-  return <TranslationPopup />;
+  return (
+    <View style={styles.container}>
+      <TranslationPopup />
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 0,
+    ...(Platform.OS === 'web' && {
+      // @ts-ignore - CSS for web/Electron
+      background: 'transparent',
+    }),
+  },
+});

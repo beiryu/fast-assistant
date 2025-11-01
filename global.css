@@ -2,3 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Remove focus outline for inputs */
+input:focus,
+textarea:focus {
+  outline: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Remove focus ring for React Native Web TextInput */
+input[type="text"]:focus,
+input[type="search"]:focus,
+textarea:focus {
+  outline: none !important;
+  outline-width: 0 !important;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+

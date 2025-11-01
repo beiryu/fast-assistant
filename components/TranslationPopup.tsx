@@ -1,12 +1,14 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BorderRadius, Colors, FontSize, FontWeight, LineHeight, Shadows, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { translationEngine, TranslationError } from '@/lib/translationEngine';
 import { useTranslationStore } from '@/stores/translationStore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
+  ActivityIndicator,
   Clipboard,
   Keyboard,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,16 +21,40 @@ interface TranslationPopupProps {
 }
 
 const MAX_CHARACTERS = 500;
-const MIN_INPUT_HEIGHT = 100;
-const MAX_INPUT_HEIGHT = 240; // Approximately 10 lines (20px per line + padding)
-const LINE_HEIGHT = 24;
+const INPUT_HEIGHT = 36; // Single line input height - reduced
 
 export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) => {
+  const colorScheme = useColorScheme();
+  // Better dark mode detection for web/Electron - check system preference
+  const [isDark, setIsDark] = useState(colorScheme === 'dark');
+  
+  // Detect system dark mode preference on web/Electron
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      
+      // Set initial value
+      setIsDark(mediaQuery.matches || colorScheme === 'dark');
+      
+      // Listen for changes (modern browsers)
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        // Fallback for older browsers
+        mediaQuery.addListener(handleChange);
+        return () => mediaQuery.removeListener(handleChange);
+      }
+    } else {
+      setIsDark(colorScheme === 'dark');
+    }
+  }, [colorScheme]);
+  
+  const colors = Colors[isDark ? 'dark' : 'light'];
+  
   const inputRef = useRef<TextInput>(null);
-  const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
-  const [showCopiedToast, setShowCopiedToast] = useState(false);
-  const [translationComplete, setTranslationComplete] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
   const { 
     currentInput, 
     currentOutput, 
@@ -50,13 +76,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     return () => clearTimeout(focusTimer);
   }, []);
 
-  // Reset input height when input is cleared
-  useEffect(() => {
-    if (currentInput.length === 0) {
-      setInputHeight(MIN_INPUT_HEIGHT);
-    }
-  }, [currentInput]);
-
 
   const handleCopy = useCallback(async () => {
     if (!currentOutput) return;
@@ -70,8 +89,7 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
         Clipboard.setString(currentOutput);
       }
       
-      // Show toast notification (US-1.5: visual confirmation)
-      setShowCopiedToast(true);
+      // Copy successful - no notification
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
       setError('Failed to copy to clipboard. Please try again.');
@@ -79,26 +97,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     }
   }, [currentOutput, setError]);
 
-  // Show/hide toast animation
-  useEffect(() => {
-    if (showCopiedToast) {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setShowCopiedToast(false);
-      });
-    }
-  }, [showCopiedToast, fadeAnim]);
 
   // Keyboard shortcuts: Enter to translate, Cmd/Ctrl+C to copy
   useEffect(() => {
@@ -114,17 +112,14 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
               setLoading(true);
               setError(null);
               setOutput('');
-              setTranslationComplete(false);
               
               translationEngine.translate(inputText)
                 .then(result => {
                   setOutput(result.output);
                   setLoading(false);
-                  setTranslationComplete(true);
                 })
                 .catch(err => {
                   setLoading(false);
-                  setTranslationComplete(false);
                   if (err instanceof TranslationError) {
                     let errorMessage = err.message;
                     if (err.retryable) {
@@ -204,19 +199,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     }
   };
 
-  const handleContentSizeChange = (event: any) => {
-    const { height } = event.nativeEvent.contentSize;
-    // Calculate height based on content
-    // Add padding (12 top + 12 bottom = 24) and some extra for better UX
-    // Limit to MAX_INPUT_HEIGHT (approximately 10 lines)
-    const contentHeight = height;
-    const padding = 24; // 12px top + 12px bottom
-    const newHeight = Math.max(
-      MIN_INPUT_HEIGHT,
-      Math.min(MAX_INPUT_HEIGHT, contentHeight + padding)
-    );
-    setInputHeight(newHeight);
-  };
 
   const handleTranslate = async () => {
     const inputText = currentInput.trim();
@@ -228,7 +210,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     setLoading(true);
     setError(null);
     setOutput(''); // Clear previous output (US-1.4: clears when new input entered)
-    setTranslationComplete(false);
     
     try {
       const result = await translationEngine.translate(inputText);
@@ -241,11 +222,9 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       // Update output with translation
       setOutput(result.output);
       setLoading(false);
-      setTranslationComplete(true);
     } catch (error) {
       console.error('Translation error:', error);
       setLoading(false);
-      setTranslationComplete(false);
       
       // Handle different error types with user-friendly messages
       if (error instanceof TranslationError) {
@@ -277,367 +256,239 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.popup}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>QuickTranslate</Text>
-          {onClose && (
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
+    <View 
+      style={[
+        styles.popup, 
+        { 
+          backgroundColor: isDark 
+            ? 'rgba(30, 30, 35, 0.85)' 
+            : 'rgba(255, 255, 255, 0.9)',
+          borderWidth: 1,
+          borderColor: isDark 
+            ? 'rgba(255, 255, 255, 0.1)' 
+            : 'rgba(0, 0, 0, 0.1)',
+          ...(Platform.OS === 'web' && {
+            // @ts-ignore - CSS backdrop-filter for macOS glass effect
+            backdropFilter: 'blur(0px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(60px) saturate(200%)',
+          }),
+        }, 
+        Shadows.lg
+      ]}
+    >
         {/* Input Section */}
         <View style={styles.inputSection}>
-          <View style={styles.inputWrapper}>
+          <View style={styles.inputRow}>
             <TextInput
               ref={inputRef}
-              style={[styles.input, { height: inputHeight }]}
-              placeholder="Type your message in Vietnamese, English, or mixed... (e.g., Tôi muốn confirm về meeting tomorrow)"
-              placeholderTextColor="#9CA3AF"
+              style={[
+                styles.input, 
+                { 
+                  borderColor: isDark 
+                    ? 'rgba(255, 255, 255, 0.15)' 
+                    : 'rgba(0, 0, 0, 0.1)',
+                  color: colors.textPrimary,
+                }
+              ]}
+              placeholder="Enter text to translate..."
+              placeholderTextColor={colors.textTertiary}
               value={currentInput}
               onChangeText={handleInputChange}
-              onContentSizeChange={handleContentSizeChange}
-              multiline
+              onSubmitEditing={handleTranslate}
+              returnKeyType="send"
               autoFocus
               autoCapitalize="sentences"
               autoCorrect={true}
-              textAlignVertical="top"
               maxLength={MAX_CHARACTERS}
-              // Ensure proper handling of Vietnamese characters
               keyboardType="default"
             />
-            {currentInput.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => {
-                  setInput('');
-                  setInputHeight(MIN_INPUT_HEIGHT);
-                }} 
-                style={styles.clearButton}
-              >
-                <Text style={styles.clearButtonText}>Clear</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {/* Character Counter */}
-          <View style={styles.characterCounterWrapper}>
-            <Text 
+            <TouchableOpacity
+              onPress={handleTranslate}
+              disabled={isLoading || !currentInput.trim()}
               style={[
-                styles.characterCounter,
-                currentInput.length >= MAX_CHARACTERS && styles.characterCounterWarning,
-                currentInput.length > MAX_CHARACTERS * 0.9 && styles.characterCounterNearLimit
+                styles.sendButton,
+                { 
+                  marginLeft: Spacing.sm,
+                }
               ]}
+              activeOpacity={0.8}
             >
-              {currentInput.length} / {MAX_CHARACTERS} characters
-              {currentInput.length > 0 && (
-                <Text style={styles.characterCounterRemaining}>
-                  {' '}({MAX_CHARACTERS - currentInput.length} remaining)
-                </Text>
-              )}
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <IconSymbol 
+                name="paperplane.fill" 
+                size={16} 
+                color={!currentInput.trim() ? colors.textTertiary : colors.primary} 
+              />
+            )}
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Error Display */}
         {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorContainer, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', borderColor: colors.error }]}>
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           </View>
         )}
 
-        {/* Translate Button */}
-        <TouchableOpacity
-          onPress={handleTranslate}
-          disabled={isLoading || !currentInput.trim()}
-          style={[
-            styles.translateButton,
-            (isLoading || !currentInput.trim()) && styles.translateButtonDisabled
-          ]}
-        >
-          <Text style={styles.translateButtonText}>
-            {isLoading ? 'Translating...' : 'Translate'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Loading Indicator */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <View style={styles.loadingSpinner} />
-            <Text style={styles.loadingText}>Translating your text...</Text>
-          </View>
-        )}
-
-        {/* Output Section - US-1.4: Display Translation Output */}
+        {/* Output Section - Simple text display */}
         {currentOutput && (
           <View style={styles.outputSection}>
             <View style={styles.outputHeader}>
-              <View style={styles.outputLabelContainer}>
-                <Text style={styles.outputLabel}>Translation:</Text>
-                {translationComplete && (
-                  <Text style={styles.completionIndicator}> ✓</Text>
-                )}
+              <View style={[
+                styles.outputTextContainer, 
+                { 
+                  borderColor: isDark 
+                    ? 'rgba(255, 255, 255, 0.15)' 
+                    : 'rgba(0, 0, 0, 0.1)',
+                }
+              ]}>
+                <Text style={[styles.outputText, { color: colors.textSecondary }]} selectable>
+                  {currentOutput}
+                </Text>
               </View>
-              <TouchableOpacity onPress={handleCopy} style={styles.copyButton}>
-                <Text style={styles.copyButtonText}>📋 Copy</Text>
+              <TouchableOpacity 
+                onPress={handleCopy} 
+                style={[
+                  styles.copyButton,
+                  { 
+                    marginLeft: Spacing.xs,
+                  }
+                ]}
+                activeOpacity={0.8}
+              >
+              <IconSymbol 
+                name="doc.on.doc" 
+                size={16} 
+                color={colors.textSecondary} 
+              />
               </TouchableOpacity>
             </View>
-            {/* US-1.4: Scrollable output container for long text */}
-            <ScrollView 
-              style={styles.outputContainer}
-              contentContainerStyle={styles.outputContent}
-              showsVerticalScrollIndicator={true}
-            >
-              <Text style={styles.outputText} selectable>{currentOutput}</Text>
-            </ScrollView>
           </View>
         )}
 
-        {/* Toast Notification - US-1.5: Visual confirmation when copied */}
-        {showCopiedToast && (
-          <Animated.View 
-            style={[
-              styles.toastContainer,
-              { opacity: fadeAnim }
-            ]}
-          >
-            <Text style={styles.toastText}>✓ Copied!</Text>
-          </Animated.View>
-        )}
-
         {/* Footer Hint */}
-        <Text style={styles.footerHint}>
-          {Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI
-            ? 'Press Cmd/Ctrl+Shift+T to toggle • Cmd/Ctrl+Enter to translate • Cmd/Ctrl+C to copy'
-            : 'Press Esc to close • Cmd/Ctrl+Enter to translate • Cmd/Ctrl+C to copy'}
+        <Text style={[styles.footerHint, { color: colors.textTertiary }]}>
+          Cmd/Ctrl+Enter to translate • Cmd/Ctrl+C to copy
         </Text>
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
   popup: {
     width: '100%',
-    maxWidth: 500,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    maxWidth: 520,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    margin: 0,
+    marginBottom: 0,
+    alignSelf: 'center',
+    ...Shadows.lg,
+    zIndex: 1000,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 0,
+    minHeight: 24,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    lineHeight: FontSize.xxl * LineHeight.tight,
   },
   closeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.medium,
   },
   inputSection: {
-    marginBottom: 12,
+    marginBottom: 0,
+    marginTop: 0,
   },
-  inputWrapper: {
-    position: 'relative',
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    lineHeight: LINE_HEIGHT,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-    minHeight: MIN_INPUT_HEIGHT,
-    maxHeight: MAX_INPUT_HEIGHT,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    fontSize: FontSize.sm,
+    lineHeight: FontSize.sm * LineHeight.tight,
+    height: INPUT_HEIGHT,
+    backgroundColor: 'transparent',
+  },
+  sendButton: {
+    width: INPUT_HEIGHT,
+    height: INPUT_HEIGHT,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   characterCounterWrapper: {
-    marginTop: 6,
+    marginTop: 2,
     alignItems: 'flex-end',
   },
   characterCounter: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  characterCounterNearLimit: {
-    color: '#F59E0B', // Amber for warning
-  },
-  characterCounterWarning: {
-    color: '#DC2626', // Red for limit reached
-    fontWeight: '600',
-  },
-  characterCounterRemaining: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  clearButton: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  clearButtonText: {
-    color: '#6B7280',
-    fontSize: 14,
+    fontSize: 10,
   },
   errorContainer: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FCA5A5',
     borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 12,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
   errorText: {
-    color: '#DC2626',
-    fontSize: 14,
-  },
-  translateButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  translateButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  translateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontSize: FontSize.xs,
   },
   outputSection: {
-    marginBottom: 12,
+    marginBottom: 0,
+    marginTop: Spacing.sm,
   },
   outputHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
   },
-  outputLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  outputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  completionIndicator: {
-    fontSize: 16,
-    color: '#10B981',
-    fontWeight: 'bold',
-  },
-  copyButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  copyButtonText: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  outputContainer: {
-    backgroundColor: '#F9FAFB',
+  outputTextContainer: {
+    flex: 1,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    maxHeight: 200,
-    minHeight: 60,
-  },
-  outputContent: {
-    padding: 12,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    backgroundColor: 'transparent',
   },
   outputText: {
-    fontSize: 16,
-    color: '#111827',
-    lineHeight: 24,
+    fontSize: FontSize.xs,
+    lineHeight: FontSize.xs * LineHeight.tight,
   },
-  toastContainer: {
-    position: 'absolute',
-    top: 20,
-    left: '50%',
-    marginLeft: -60,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 1000,
-  },
-  toastText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
+  copyButton: {
+    width: INPUT_HEIGHT,
+    height: INPUT_HEIGHT,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 0,
   },
   footerHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 10,
     textAlign: 'center',
-    marginTop: 8,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  loadingSpinner: {
-    width: 16,
-    height: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderTopColor: '#2563EB',
-    borderRadius: 8,
-    marginRight: 8,
-    // Animation will be handled by platform (web has CSS animation)
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#6B7280',
+    marginTop: Spacing.xs,
+    opacity: 0.7,
   },
 });
 

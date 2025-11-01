@@ -9,11 +9,15 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+
     "electron": "wait-on http://localhost:8081 && cross-env ELECTRON_IS_DEV=1 electron electron/main.js",
     "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:8081 && cross-env ELECTRON_IS_DEV=1 electron electron/main.js\"",
-    "electron:build": "electron-builder",
-    "electron:build:mac": "electron-builder --mac",
-    "electron:build:win": "electron-builder --win"
+    
+    "build:web": "expo export -p web --output-dir dist",
+    "build:electron": "npm run build:web && electron-builder --config electron-builder.config.js",
+    "build:electron:mac": "npm run build:web && electron-builder --config electron-builder.config.js --mac",
+    "build:electron:win": "npm run build:web && electron-builder --config electron-builder.config.js --win",
+    "build:electron:linux": "npm run build:web && electron-builder --config electron-builder.config.js --linux"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -63,5 +67,9 @@
     "typescript": "~5.9.2",
     "wait-on": "^9.0.1"
   },
-  "private": true
+  "private": true,
+  "build": {
+    "appId": "com.fastassistant.app",
+    "productName": "QuickTranslate"
+  }
 }

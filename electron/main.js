@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
 const path = require('path');
 const Store = require('electron-store').default;
 
@@ -12,14 +12,28 @@ const store = new Store({
 let mainWindow = null;
 
 const createWindow = () => {
-  // Get saved window position or use default
+  // Get saved window position or use default (bottom center)
   const savedPosition = store.get('windowPosition');
+  
+  // Calculate bottom center position if no saved position
+  let windowX, windowY;
+  if (savedPosition?.x !== undefined && savedPosition?.y !== undefined) {
+    windowX = savedPosition.x;
+    windowY = savedPosition.y;
+  } else {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    const windowWidth = 500;
+    const windowHeight = 600;
+    windowX = Math.round((screenWidth - windowWidth) / 2); // Center horizontally
+    windowY = Math.round(screenHeight - windowHeight - 40); // Bottom with 40px margin
+  }
   
   mainWindow = new BrowserWindow({
     width: 500,
     height: 600,
-    x: savedPosition?.x,
-    y: savedPosition?.y,
+    x: windowX,
+    y: windowY,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -63,8 +77,8 @@ const createWindow = () => {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load built static files
-    // This will need to be configured when we set up the build process
-    mainWindow.loadURL('http://localhost:8081');
+    const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
+    mainWindow.loadFile(indexPath);
   }
 };
 
