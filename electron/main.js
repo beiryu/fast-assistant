@@ -25,10 +25,16 @@ const createWindow = () => {
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    show: false, // Don't show until ready (for faster appearance)
+    backgroundColor: '#00000000', // Transparent background
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      // Optimize for performance
+      enableRemoteModule: false,
+      sandbox: false, // Needed for preload script
+      backgroundThrottling: false, // Keep running when backgrounded
     },
   });
 
@@ -42,6 +48,11 @@ const createWindow = () => {
   mainWindow.on('blur', () => {
     // Uncomment if you want auto-hide on blur
     // mainWindow.hide();
+  });
+
+  // Optimize window show performance
+  mainWindow.once('ready-to-show', () => {
+    // Window is ready, but we'll show it on demand via hotkey
   });
 
   // Load the app
@@ -64,9 +75,17 @@ const registerGlobalHotkey = () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {
         mainWindow.hide();
+        // Notify renderer
+        mainWindow.webContents.send('window-visibility-changed', false);
       } else {
-        mainWindow.show();
-        mainWindow.focus();
+        // Optimize show performance - use showInactive then focus for faster appearance
+        mainWindow.showInactive();
+        // Focus immediately for <200ms target
+        setTimeout(() => {
+          mainWindow.focus();
+          // Notify renderer
+          mainWindow.webContents.send('window-visibility-changed', true);
+        }, 0);
       }
     } else {
       createWindow();
@@ -119,5 +138,13 @@ ipcMain.handle('set-setting', (event, key, value) => {
 
 ipcMain.handle('get-all-settings', () => {
   return store.store;
+});
+
+// IPC handler for window control
+ipcMain.handle('hide-window', () => {
+  if (mainWindow) {
+    mainWindow.hide();
+    mainWindow.webContents.send('window-visibility-changed', false);
+  }
 });
 
