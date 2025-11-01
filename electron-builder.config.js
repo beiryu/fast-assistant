@@ -1,6 +1,7 @@
 module.exports = {
   appId: 'com.fastassistant.app',
   productName: 'QuickTranslate',
+  main: 'electron/main.js',
   directories: {
     output: 'dist-electron',
   },

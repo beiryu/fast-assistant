@@ -2,7 +2,7 @@ import { supabase, EdgeFunctionResponse } from './supabase';
 import { TranslationResult } from './types';
 import { dbService } from './database';
 import { getDeviceId } from './constants';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 
 // In-memory cache for translations
 const translationCache = new Map<string, TranslationResult>();
@@ -44,7 +44,7 @@ export class TranslationEngine {
       // Auto-save to local DB
       const deviceId = await getDeviceId();
       await dbService.saveTranslation({
-        id: uuidv4(),
+        id: randomUUID(),
         input_text: input,
         output_text: result.output,
         input_language: this.detectLanguage(input),

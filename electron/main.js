@@ -1,6 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
-const Store = require('electron-store');
+const Store = require('electron-store').default;
 
 const store = new Store({
   defaults: {
