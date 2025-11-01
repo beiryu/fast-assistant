@@ -1,15 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { 
-  View, 
-  TextInput, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet,
-  Platform,
-  Keyboard,
-} from 'react-native';
-import { useTranslationStore } from '@/stores/translationStore';
 import { translationEngine, TranslationError } from '@/lib/translationEngine';
+import { useTranslationStore } from '@/stores/translationStore';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Clipboard,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface TranslationPopupProps {
   onClose?: () => void;
@@ -23,6 +26,9 @@ const LINE_HEIGHT = 24;
 export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) => {
   const inputRef = useRef<TextInput>(null);
   const [inputHeight, setInputHeight] = useState(MIN_INPUT_HEIGHT);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [translationComplete, setTranslationComplete] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const { 
     currentInput, 
     currentOutput, 
@@ -32,7 +38,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     setOutput, 
     setLoading,
     setError,
-    reset 
   } = useTranslationStore();
 
   // Auto-focus input when component mounts
@@ -52,7 +57,50 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     }
   }, [currentInput]);
 
-  // Keyboard shortcut: Enter to translate (Cmd/Ctrl+Enter)
+
+  const handleCopy = useCallback(async () => {
+    if (!currentOutput) return;
+
+    try {
+      if (Platform.OS === 'web') {
+        // Web platform: use Clipboard API
+        await navigator.clipboard.writeText(currentOutput);
+      } else {
+        // Mobile platform: use React Native Clipboard
+        Clipboard.setString(currentOutput);
+      }
+      
+      // Show toast notification (US-1.5: visual confirmation)
+      setShowCopiedToast(true);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      setError('Failed to copy to clipboard. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    }
+  }, [currentOutput, setError]);
+
+  // Show/hide toast animation
+  useEffect(() => {
+    if (showCopiedToast) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(2000),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowCopiedToast(false);
+      });
+    }
+  }, [showCopiedToast, fadeAnim]);
+
+  // Keyboard shortcuts: Enter to translate, Cmd/Ctrl+C to copy
   useEffect(() => {
     if (Platform.OS === 'web') {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -66,14 +114,17 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
               setLoading(true);
               setError(null);
               setOutput('');
+              setTranslationComplete(false);
               
               translationEngine.translate(inputText)
                 .then(result => {
                   setOutput(result.output);
                   setLoading(false);
+                  setTranslationComplete(true);
                 })
                 .catch(err => {
                   setLoading(false);
+                  setTranslationComplete(false);
                   if (err instanceof TranslationError) {
                     let errorMessage = err.message;
                     if (err.retryable) {
@@ -86,6 +137,11 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
                 });
             }
           }
+        }
+        // Cmd/Ctrl + C to copy (only when output exists and not typing in input)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'c' && currentOutput && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleCopy();
         }
         // Escape to clear error or close
         if (e.key === 'Escape') {
@@ -100,7 +156,7 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isLoading, currentInput, error, setLoading, setError, setOutput]);
+  }, [isLoading, currentInput, currentOutput, error, setLoading, setError, setOutput, handleCopy]);
 
   // Handle window visibility changes (when shown via hotkey)
   useEffect(() => {
@@ -171,7 +227,8 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     
     setLoading(true);
     setError(null);
-    setOutput(''); // Clear previous output
+    setOutput(''); // Clear previous output (US-1.4: clears when new input entered)
+    setTranslationComplete(false);
     
     try {
       const result = await translationEngine.translate(inputText);
@@ -184,9 +241,11 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       // Update output with translation
       setOutput(result.output);
       setLoading(false);
+      setTranslationComplete(true);
     } catch (error) {
       console.error('Translation error:', error);
       setLoading(false);
+      setTranslationComplete(false);
       
       // Handle different error types with user-friendly messages
       if (error instanceof TranslationError) {
@@ -204,16 +263,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
         setError('An unexpected error occurred. Please try again.');
       }
     }
-  };
-
-  const handleCopy = async () => {
-    if (!currentOutput || Platform.OS === 'web') {
-      if (Platform.OS === 'web' && currentOutput) {
-        await navigator.clipboard.writeText(currentOutput);
-        // TODO: Show toast notification
-      }
-    }
-    // TODO: Implement clipboard for mobile in future
   };
 
   const handleClose = () => {
@@ -320,26 +369,48 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
           </View>
         )}
 
-        {/* Output Section */}
+        {/* Output Section - US-1.4: Display Translation Output */}
         {currentOutput && (
           <View style={styles.outputSection}>
             <View style={styles.outputHeader}>
-              <Text style={styles.outputLabel}>Translation:</Text>
+              <View style={styles.outputLabelContainer}>
+                <Text style={styles.outputLabel}>Translation:</Text>
+                {translationComplete && (
+                  <Text style={styles.completionIndicator}> ✓</Text>
+                )}
+              </View>
               <TouchableOpacity onPress={handleCopy} style={styles.copyButton}>
                 <Text style={styles.copyButtonText}>📋 Copy</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.outputContainer}>
-              <Text style={styles.outputText}>{currentOutput}</Text>
-            </View>
+            {/* US-1.4: Scrollable output container for long text */}
+            <ScrollView 
+              style={styles.outputContainer}
+              contentContainerStyle={styles.outputContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={styles.outputText} selectable>{currentOutput}</Text>
+            </ScrollView>
           </View>
+        )}
+
+        {/* Toast Notification - US-1.5: Visual confirmation when copied */}
+        {showCopiedToast && (
+          <Animated.View 
+            style={[
+              styles.toastContainer,
+              { opacity: fadeAnim }
+            ]}
+          >
+            <Text style={styles.toastText}>✓ Copied!</Text>
+          </Animated.View>
         )}
 
         {/* Footer Hint */}
         <Text style={styles.footerHint}>
           {Platform.OS === 'web' && typeof window !== 'undefined' && window.electronAPI
-            ? 'Press Cmd/Ctrl+Shift+T to toggle • Cmd/Ctrl+Enter to translate'
-            : 'Press Esc to close • Cmd/Ctrl+Enter to translate'}
+            ? 'Press Cmd/Ctrl+Shift+T to toggle • Cmd/Ctrl+Enter to translate • Cmd/Ctrl+C to copy'
+            : 'Press Esc to close • Cmd/Ctrl+Enter to translate • Cmd/Ctrl+C to copy'}
         </Text>
       </View>
     </View>
@@ -477,10 +548,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  outputLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   outputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
+  },
+  completionIndicator: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: 'bold',
   },
   copyButton: {
     paddingHorizontal: 8,
@@ -496,13 +576,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    padding: 12,
+    maxHeight: 200,
     minHeight: 60,
+  },
+  outputContent: {
+    padding: 12,
   },
   outputText: {
     fontSize: 16,
     color: '#111827',
     lineHeight: 24,
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 20,
+    left: '50%',
+    marginLeft: -60,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   footerHint: {
     fontSize: 12,
