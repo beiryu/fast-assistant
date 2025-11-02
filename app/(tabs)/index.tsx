@@ -30,9 +30,5 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 0,
-    ...(Platform.OS === 'web' && {
-      // @ts-ignore - CSS for web/Electron
-      background: 'transparent',
-    }),
   },
 });

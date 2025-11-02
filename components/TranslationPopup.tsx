@@ -316,14 +316,14 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
         </View>
 
         {/* Error Display */}
-        {error && (
+        {error ? (
           <View style={[styles.errorContainer, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2', borderColor: colors.error }]}>
             <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           </View>
-        )}
+        ) : null}
 
         {/* Output Section - Simple text display */}
-        {currentOutput && (
+        {currentOutput ? (
           <View style={styles.outputSection}>
             <View style={styles.outputHeader}>
               <View style={[
@@ -356,7 +356,7 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
               </TouchableOpacity>
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* Footer Hint */}
         <Text style={[styles.footerHint, { color: colors.textTertiary }]}>

@@ -144,29 +144,32 @@ export const LineHeight = {
   relaxed: 1.7,
 };
 
+// Helper function to convert shadow props to boxShadow
+const createShadow = (offset: { width: number; height: number }, radius: number, opacity: number, elevationValue: number, color: string = '#000') => {
+  if (Platform.OS === 'web') {
+    // Use boxShadow for web
+    const rgbaColor = color === '#000' 
+      ? `rgba(0, 0, 0, ${opacity})`
+      : color;
+    return {
+      boxShadow: `${offset.width}px ${offset.height}px ${radius}px 0px ${rgbaColor}`,
+    };
+  }
+  // Use shadow* properties for native platforms
+  return {
+    shadowColor: color,
+    shadowOffset: offset,
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    ...(Platform.OS === 'android' && { elevation: elevationValue }),
+  };
+};
+
 // Shadows (subtle elevation)
 export const Shadows = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
-  },
+  sm: createShadow({ width: 0, height: 1 }, 2, 0.05, 1),
+  md: createShadow({ width: 0, height: 2 }, 8, 0.08, 3),
+  lg: createShadow({ width: 0, height: 8 }, 24, 0.15, 8),
 };
 
 export const Fonts = Platform.select({

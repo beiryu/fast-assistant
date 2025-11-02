@@ -21,7 +21,6 @@ export default function TabLayout() {
           height: 0, 
           opacity: 0,
           position: 'absolute',
-          pointerEvents: 'none',
         },
       }}>
       <Tabs.Screen
