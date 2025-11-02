@@ -1,12 +1,8 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, FontSize, FontWeight, LineHeight, Shadows, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getDeviceId } from '@/lib/constants';
-import { dbService } from '@/lib/database';
 import { translationEngine, TranslationError } from '@/lib/translationEngine';
-import { useHistoryStore } from '@/stores/historyStore';
 import { useTranslationStore } from '@/stores/translationStore';
-import { randomUUID } from 'expo-crypto';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -68,10 +64,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
     setLoading,
     setError,
   } = useTranslationStore();
-
-  const {
-    addTranslation,
-  } = useHistoryStore();
 
   // Auto-focus input when component mounts
   useEffect(() => {
@@ -207,16 +199,6 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
   };
 
 
-  // Helper function to detect language (simple version)
-  const detectLanguage = (input: string): 'vi' | 'en' | 'mixed' => {
-    const hasVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(input);
-    const hasEnglish = /[a-z]/i.test(input);
-    
-    if (hasVietnamese && hasEnglish) return 'mixed';
-    if (hasVietnamese) return 'vi';
-    return 'en';
-  };
-
   const handleTranslate = async () => {
     const inputText = currentInput.trim();
     if (!inputText) {
@@ -240,29 +222,9 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ onClose }) =
       setOutput(result.output);
       setLoading(false);
 
-      // Update history store immediately for better UX
-      // (The translation engine already saves to DB asynchronously)
-      const deviceId = await getDeviceId();
-      const translation = {
-        id: randomUUID(),
-        input_text: inputText,
-        output_text: result.output,
-        input_language: detectLanguage(inputText),
-        created_at: Date.now(),
-        updated_at: Date.now(),
-        is_synced: false,
-        device_id: deviceId,
-        word_count: inputText.split(/\s+/).filter(w => w.length > 0).length,
-        char_count: inputText.length,
-      };
-      
-      // Add to history store immediately
-      addTranslation(translation);
-      
-      // Also ensure it's saved to DB (backup in case the engine's save failed)
-      dbService.saveTranslation(translation).catch(err => {
-        console.error('Failed to save translation to DB from popup:', err);
-      });
+      // Note: Translation is already saved to DB by translationEngine
+      // We just need to refresh the history list, which happens automatically
+      // when the screen is focused (via useFocusEffect in history.tsx)
     } catch (error) {
       console.error('Translation error:', error);
       setLoading(false);
@@ -420,7 +382,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     alignSelf: 'center',
     ...Shadows.lg,
-    zIndex: 1000,
   },
   header: {
     flexDirection: 'row',

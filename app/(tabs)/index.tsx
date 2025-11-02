@@ -1,4 +1,6 @@
 import { TranslationPopup } from '@/components/TranslationPopup';
+import { Spacing } from '@/constants/theme';
+import { useIsFocused } from '@react-navigation/native';
 import { Platform, StyleSheet, View } from 'react-native';
 
 declare global {
@@ -15,10 +17,11 @@ declare global {
 }
 
 export default function HomeScreen() {
+  const isFocused = useIsFocused();
 
   return (
     <View style={styles.container}>
-      <TranslationPopup />
+      {isFocused && <TranslationPopup />}
     </View>
   );
 }

@@ -7,17 +7,26 @@
  * testDatabase();
  */
 
-import { getDatabase, dbService } from './database';
+import { dbService } from './database';
 import { getDeviceId } from './constants';
 import { randomUUID } from 'expo-crypto';
 
 export async function testDatabase() {
   try {
-    console.log('Testing database initialization...');
+    console.log('Testing Supabase database connection...');
     
-    // Initialize database
-    const db = await getDatabase();
-    console.log('✓ Database initialized');
+    // Verify Supabase is configured
+    const isConfigured = !!(
+      process.env.EXPO_PUBLIC_SUPABASE_URL &&
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+    );
+    
+    if (!isConfigured) {
+      console.warn('⚠ Supabase not configured. Skipping database tests.');
+      return false;
+    }
+    
+    console.log('✓ Supabase connection configured');
     
     // Test device ID
     const deviceId = await getDeviceId();
