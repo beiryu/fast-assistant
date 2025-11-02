@@ -180,20 +180,12 @@
 **Story Points**: 5  
 **Acceptance Criteria**:
 - [ ] Saves immediately after successful translation
-- [ ] Saves on copy to clipboard
-- [ ] Auto-saves every 3 seconds while typing
-- [ ] Saves on app minimize/background
-- [ ] No manual save button needed
 
 **Technical Tasks**:
 - [ ] Create SQLite database schema (2h)
-- [ ] Implement auto-save service (4h)
-- [ ] Add debounce logic (1h)
-- [ ] Test save triggers (2h)
 - [ ] Handle edge cases (app crash) (2h)
 
 **Definition of Done**:
-- [ ] All triggers working
 - [ ] No data loss on crash
 - [ ] Performance not affected
 - [ ] Database indexed properly
@@ -207,7 +199,7 @@
 **Story Points**: 5  
 **Acceptance Criteria**:
 - [ ] Shows last 50 translations by default
-- [ ] Displays input + output preview (first 50 chars)
+- [ ] Displays input + output
 - [ ] Shows timestamp (relative: "2 hours ago")
 - [ ] Sorted newest first
 - [ ] Infinite scroll loads older items
@@ -224,85 +216,6 @@
 - [ ] Smooth scrolling
 - [ ] Timestamps accurate
 - [ ] Pull-to-refresh works
-
----
-
-#### 🎯 **US-2.3**: Search History
-**As a user, I want to search my history so that I can find specific translations quickly.**
-
-**Priority**: P1 (Should Have)  
-**Story Points**: 5  
-**Acceptance Criteria**:
-- [ ] Search bar at top of history
-- [ ] Searches both input and output text
-- [ ] Real-time search (debounced 300ms)
-- [ ] Highlights matching text
-- [ ] Clear search button (X)
-
-**Technical Tasks**:
-- [ ] Add search input component (2h)
-- [ ] Implement search query logic (3h)
-- [ ] Add text highlighting (2h)
-- [ ] Debounce search input (1h)
-- [ ] Optimize search performance (2h)
-
-**Definition of Done**:
-- [ ] Search returns results <300ms
-- [ ] Matches are highlighted
-- [ ] Clear button works
-- [ ] Performance with 1000+ items
-
----
-
-#### 🎯 **US-2.4**: View Full Translation
-**As a user, I want to see the complete translation when I tap a history item.**
-
-**Priority**: P1 (Should Have)  
-**Story Points**: 3  
-**Acceptance Criteria**:
-- [ ] Tapping item shows full input + output
-- [ ] Modal or detail screen opens
-- [ ] Can copy input or output separately
-- [ ] Shows full timestamp
-- [ ] Close button returns to list
-
-**Technical Tasks**:
-- [ ] Create detail modal (3h)
-- [ ] Add navigation logic (1h)
-- [ ] Implement copy buttons (1h)
-- [ ] Style for readability (2h)
-
-**Definition of Done**:
-- [ ] Modal opens smoothly
-- [ ] All data visible
-- [ ] Copy works for both fields
-- [ ] Close animation smooth
-
----
-
-#### 🎯 **US-2.5**: Delete History Item
-**As a user, I want to delete translations I don't need so that my history stays clean.**
-
-**Priority**: P2 (Nice to Have)  
-**Story Points**: 2  
-**Acceptance Criteria**:
-- [ ] Swipe left to delete (mobile)
-- [ ] Right-click menu delete (desktop)
-- [ ] Confirmation dialog before delete
-- [ ] Undo option (5 seconds)
-- [ ] Deleted items removed from list
-
-**Technical Tasks**:
-- [ ] Add swipe gesture (mobile) (2h)
-- [ ] Add context menu (desktop) (2h)
-- [ ] Implement delete logic (1h)
-- [ ] Add undo functionality (2h)
-
-**Definition of Done**:
-- [ ] Delete works on both platforms
-- [ ] Confirmation prevents accidents
-- [ ] Undo works reliably
-- [ ] UI updates immediately
 
 ---
 
