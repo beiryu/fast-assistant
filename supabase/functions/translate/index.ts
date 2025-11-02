@@ -1,6 +1,9 @@
 // Supabase Edge Function for Translation
 // This file should be deployed to Supabase Edge Functions
 // To deploy: supabase functions deploy translate
+// Note: This file runs on Deno runtime, not Node.js
+// TypeScript errors here are expected when using Node.js TypeScript compiler
+// This file is excluded from main tsconfig.json and should use Deno for type checking
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { OpenAI } from "https://esm.sh/openai@4.20.1";
@@ -33,6 +36,11 @@ serve(async (req) => {
 
     const body: TranslateRequest = await req.json();
     const { input, inputLanguage = 'auto', outputLanguage = 'en' } = body;
+    
+    // Note: inputLanguage and outputLanguage reserved for future use
+    // Currently always translates to English
+    void inputLanguage;
+    void outputLanguage;
 
     if (!input || typeof input !== 'string') {
       return new Response(

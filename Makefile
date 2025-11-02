@@ -28,7 +28,7 @@ ifeq ($(OS),Windows_NT)
     PLATFORM := win
 endif
 
-.PHONY: help install clean lint type-check test env-check build-web build-desktop build-mobile deploy-prod deploy-staging security-audit deps-update smoke-test
+.PHONY: help install clean lint type-check test env-check build-web build-desktop deploy-prod security-audit deps-update smoke-test
 
 # Default target
 help: ## Show this help message
@@ -121,18 +121,6 @@ build-desktop-all: env-check ## Build desktop application for all platforms
 	@npm run build:electron:linux
 	@echo "$(GREEN)✓ All desktop builds completed: $(ELECTRON_BUILD_DIR)/$(NC)"
 
-build-mobile: env-check ## Build mobile applications (requires EAS)
-	@echo "$(BLUE)Building mobile applications...$(NC)"
-	@if ! command -v eas &> /dev/null; then \
-		echo "$(RED)✗ EAS CLI not found. Install with: npm install -g eas-cli$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(YELLOW)Building iOS (production)...$(NC)"
-	@eas build --platform ios --profile production --non-interactive
-	@echo "$(YELLOW)Building Android (production)...$(NC)"
-	@eas build --platform android --profile production --non-interactive
-	@echo "$(GREEN)✓ Mobile builds submitted to EAS$(NC)"
-
 build: ## Build all platforms (web + desktop for current platform)
 	@echo "$(BLUE)Building all platforms...$(NC)"
 	@$(MAKE) build-web
@@ -152,21 +140,6 @@ smoke-test: ## Run smoke tests on built applications
 	@if [ -d "$(ELECTRON_BUILD_DIR)" ]; then \
 		echo "$(GREEN)✓ Desktop build files present$(NC)"; \
 	fi
-
-deploy-staging: ## Deploy to staging environment
-	@echo "$(BLUE)Deploying to staging...$(NC)"
-	@$(MAKE) env-check
-	@$(MAKE) test
-	@$(MAKE) build-web
-	@echo "$(YELLOW)Deploying web to Vercel (staging)...$(NC)"
-	@if command -v vercel &> /dev/null; then \
-		vercel --confirm; \
-	else \
-		echo "$(RED)✗ Vercel CLI not found. Install with: npm install -g vercel$(NC)"; \
-		exit 1; \
-	fi
-	@$(MAKE) smoke-test
-	@echo "$(GREEN)✓ Staging deployment completed$(NC)"
 
 deploy-prod: ## Full production deployment workflow
 	@echo "$(BLUE)Starting production deployment...$(NC)"
@@ -215,18 +188,6 @@ deploy-prod: ## Full production deployment workflow
 	@echo "  Web: $(BUILD_DIR)/"
 	@echo "  Desktop: $(ELECTRON_BUILD_DIR)/"
 
-deploy-mobile: ## Deploy mobile apps to app stores
-	@echo "$(BLUE)Deploying mobile applications...$(NC)"
-	@if ! command -v eas &> /dev/null; then \
-		echo "$(RED)✗ EAS CLI not found. Install with: npm install -g eas-cli$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(YELLOW)Submitting to iOS App Store...$(NC)"
-	@eas submit --platform ios --latest
-	@echo "$(YELLOW)Submitting to Google Play Store...$(NC)"
-	@eas submit --platform android --latest
-	@echo "$(GREEN)✓ Mobile apps submitted to stores$(NC)"
-
 deps-update: ## Update all dependencies to latest versions
 	@echo "$(BLUE)Updating dependencies...$(NC)"
 	@npm update
@@ -254,14 +215,29 @@ dev-setup: install env-check ## Complete development environment setup
 	@echo "$(BLUE)Setting up development environment...$(NC)"
 	@if [ ! -f .env ]; then \
 		echo "$(YELLOW)Creating .env from example...$(NC)"; \
-		cp .env.example .env; \
+		if [ -f .env.example ]; then \
+			cp .env.example .env; \
+		fi; \
 		echo "$(RED)⚠ Please edit .env with your actual values$(NC)"; \
 	fi
+	@echo "$(BLUE)Checking Supabase Edge Functions setup...$(NC)"
+	@if [ -d "supabase/functions" ]; then \
+		echo "$(YELLOW)Note: Supabase Edge Functions use Deno runtime$(NC)"; \
+		echo "$(YELLOW)  TypeScript errors in supabase/functions/ are expected in Node.js context$(NC)"; \
+		echo "$(YELLOW)  These files are excluded from main TypeScript checking$(NC)"; \
+		if command -v supabase &> /dev/null; then \
+			echo "$(GREEN)✓ Supabase CLI found$(NC)"; \
+		else \
+			echo "$(YELLOW)⚠ Supabase CLI not found. Install with: npm install -g supabase$(NC)"; \
+		fi; \
+	fi
+	@echo "$(BLUE)Running quality checks (excluding Supabase functions)...$(NC)"
 	@$(MAKE) test
 	@echo "$(GREEN)✓ Development environment ready$(NC)"
 	@echo "$(YELLOW)Next steps:$(NC)"
 	@echo "  1. Edit .env with your API keys"
 	@echo "  2. Run: npm start"
+	@echo "  3. For Supabase Edge Functions: Use Deno runtime (type checking handled separately)"
 
 dev-mobile: ## Start mobile development
 	@echo "$(BLUE)Starting mobile development...$(NC)"

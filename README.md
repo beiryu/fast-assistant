@@ -25,7 +25,6 @@ Before you begin, ensure you have the following installed:
 
 #### For Mobile Development
 - **Expo CLI**: `npm install -g @expo/cli`
-- **EAS CLI**: `npm install -g eas-cli`
 - **iOS**: Xcode 14+ (macOS only)
 - **Android**: Android Studio with SDK 33+
 
@@ -190,20 +189,39 @@ npm run build:electron:linux  # Linux (AppImage)
 # Output: dist-electron/ directory
 ```
 
-#### Mobile Build (via EAS)
+#### Mobile Build (manual, no paid Apple/Google account)
+##### iOS – install on your own device (expires after 7 days)
 ```bash
-# Configure EAS (first time only)
-eas login
-eas build:configure
+# 1. Generate native iOS project (first time only)
+npx expo prebuild --platform ios
 
-# Build for development
-eas build --platform ios --profile development
-eas build --platform android --profile development
+# 2. Open the Xcode workspace (or open from Finder)
+open ios/QuickTranslate.xcworkspace
 
-# Build for production
-eas build --platform ios --profile production
-eas build --platform android --profile production
+# 3. Connect your iPhone via USB or Wi‑Fi
+# 4. In Xcode select your device target and Personal Team Apple ID
+# 5. Press ▶️ Run to build and install on the device
+#    Builds signed with a free Apple ID must be reinstalled every 7 days
 ```
+
+##### Android – sideload release APK
+```bash
+# 1. Generate native Android project (first time only)
+npx expo prebuild --platform android
+
+# 2. Build a release APK
+cd android
+./gradlew assembleRelease
+
+# 3. Copy the APK from
+# android/app/build/outputs/apk/release/app-release.apk
+# Transfer to your device and install manually (enable unknown sources)
+
+# For quick debug builds you can also run
+npx expo run:android
+```
+
+> ℹ️ These manual builds let you test on your own devices without paying for EAS or the Apple Developer Program. They are not suitable for public distribution (iOS builds expire; Android users must sideload the APK).
 
 ### Build Verification
 ```bash
@@ -214,7 +232,8 @@ npx serve dist
 # Run the generated executable in dist-electron/
 
 # Test mobile build
-# Install .apk (Android) or use TestFlight (iOS)
+# iOS: Build & install from Xcode (expires after 7 days with free account)
+# Android: Install the generated release APK manually
 ```
 
 ---
@@ -258,17 +277,19 @@ make build-desktop
 # - App stores (Mac App Store, Microsoft Store)
 ```
 
-#### Mobile Distribution
+#### Mobile Distribution (manual / personal devices)
 ```bash
-# iOS App Store
-eas submit --platform ios
+# iOS (Personal Team)
+#  - Build with Xcode using your free Apple ID (as described above)
+#  - Install on your own device; rebuild every 7 days
 
-# Google Play Store
-eas submit --platform android
+# Android (APK sideload)
+#  - Send the generated app-release.apk directly to testers
+#  - Testers must enable "Install unknown apps" on their devices
 
-# Internal/Beta Distribution
-# iOS: TestFlight (automatic with EAS)
-# Android: Google Play Internal Testing
+# Public distribution requires paid developer accounts:
+#  - Apple Developer Program ($99/year)
+#  - Google Play Developer account ($25 one-time)
 ```
 
 ### Post-Deployment Verification
@@ -327,13 +348,11 @@ curl -X POST https://your-project.supabase.co/functions/v1/translate \
 ```bash
 # Build & Deploy
 make deploy-prod          # Full production deployment
-make deploy-staging       # Deploy to staging (if configured)
 
 # Build Only
 make build               # Build all platforms
 make build-web           # Build web only
 make build-desktop       # Build desktop only
-make build-mobile        # Build mobile (EAS)
 
 # Quality Checks
 make test                # Run all tests
@@ -345,6 +364,7 @@ make env-check           # Verify environment variables
 make clean               # Clean build artifacts
 make deps-update         # Update dependencies
 make security-audit      # Security vulnerability check
+# Mobile builds are manual (see "Mobile Build" section)
 ```
 
 ### Production Deployment Workflow

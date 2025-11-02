@@ -151,55 +151,28 @@ export WIN_CSC_KEY_PASSWORD="certificate-password"
 
 ---
 
-## 📱 Mobile Deployment
+## 📱 Mobile Deployment (Manual, free-tier friendly)
 
-### EAS Build & Submit
+### iOS – Personal device install via Xcode
+1. Run `npx expo prebuild --platform ios` to generate the native project (first time only).
+2. Open `ios/QuickTranslate.xcworkspace` in Xcode.
+3. Connect your iPhone via USB or Wi‑Fi.
+4. In Xcode, select your device target and set **Signing & Capabilities** to your free Apple ID (Personal Team).
+5. Press the **Run** button to build and install the app.
 
-#### Prerequisites
-```bash
-# Install EAS CLI
-npm install -g eas-cli
+> ⏳ Builds signed with a free Apple ID expire after **7 days**. Rebuild from Xcode whenever the app stops launching. This method is suitable for personal testing only.
 
-# Login
-eas login
+### Android – Sideload release APK
+1. Run `npx expo prebuild --platform android` to generate the native project (first time only).
+2. From the `android` directory, execute `./gradlew assembleRelease`.
+3. The release APK will be generated at `android/app/build/outputs/apk/release/app-release.apk`.
+4. Transfer the APK to your device and install it manually (enable "install unknown apps").
 
-# Configure project (first time)
-eas build:configure
-```
+> ✅ Android sideloading does not expire, but users must trust the APK manually. For public distribution you will eventually need to publish through Google Play.
 
-#### Build Process
-```bash
-# Build for production
-make build-mobile
-
-# Or manually
-eas build --platform ios --profile production
-eas build --platform android --profile production
-```
-
-#### App Store Submission
-```bash
-# Submit to stores
-make deploy-mobile
-
-# Or manually
-eas submit --platform ios --latest
-eas submit --platform android --latest
-```
-
-### Store Requirements
-
-#### iOS App Store
-- Valid Apple Developer account ($99/year)
-- App Store Connect configured
-- Privacy policy URL
-- App review compliance
-
-#### Google Play Store
-- Google Play Console account ($25 one-time)
-- Signed APK/AAB
-- Content rating completed
-- Privacy policy URL
+### Preparing for Store Distribution (optional)
+- **iOS**: Requires the Apple Developer Program ($99/year), App Store Connect setup, privacy policy URL, and compliance with Apple's review guidelines.
+- **Android**: Requires a Google Play Console account ($25 one-time), signed AAB/APK, content rating questionnaire, and privacy policy URL.
 
 ---
 

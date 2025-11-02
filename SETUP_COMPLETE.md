@@ -64,9 +64,8 @@ make dev-mobile     # Mobile development
 make deploy-prod
 
 # Or deploy specific targets
-make deploy-staging  # Staging environment
 make build-desktop   # Desktop builds
-make build-mobile    # Mobile builds (EAS)
+# Mobile builds are manual (see README)
 ```
 
 ---
@@ -80,7 +79,7 @@ make build-mobile    # Mobile builds (EAS)
 
 ### Production Configuration
 - [ ] Set up Vercel account and configure domain
-- [ ] Configure EAS for mobile builds
+- [ ] Plan manual mobile build workflow (Xcode for iOS, Gradle/Android Studio for Android)
 - [ ] Set up Supabase production project
 - [ ] Configure CI/CD secrets in GitHub
 
@@ -88,7 +87,6 @@ make build-mobile    # Mobile builds (EAS)
 - [ ] **Supabase**: Create project and get URL + anon key
 - [ ] **OpenAI**: Get API key for translation feature
 - [ ] **Vercel** (optional): For automated deployments
-- [ ] **EAS** (optional): For mobile app store distribution
 
 ---
 
@@ -117,7 +115,7 @@ make dev-mobile     # Start mobile development
 make build-web              # Web build only
 make build-desktop          # Desktop (current platform)
 make build-desktop-all      # Desktop (all platforms)
-make build-mobile           # Mobile (via EAS)
+# Mobile builds are manual (see README)
 ```
 
 ---
@@ -163,7 +161,7 @@ fast-assistant/
 
 ### Deployment Preparation
 1. **Set up Vercel** for web hosting
-2. **Configure EAS** for mobile app stores
+2. **Prepare manual mobile builds** (Xcode personal team for iOS, Gradle APK for Android)
 3. **Set up monitoring** (Sentry, analytics)
 4. **Configure CI/CD** secrets in GitHub
 
@@ -202,7 +200,7 @@ fast-assistant/
 ### ✅ Cross-Platform Development
 - **Web**: React Native Web + Expo
 - **Desktop**: Electron integration
-- **Mobile**: Native iOS/Android via EAS
+- **Mobile**: Manual native builds via Xcode (iOS) and Gradle (Android)
 
 ### ✅ Modern Development Stack
 - **TypeScript**: Full type safety

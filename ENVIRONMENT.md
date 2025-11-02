@@ -177,19 +177,16 @@ const openaiKey = process.env.OPENAI_API_KEY; // Available in main process
 ```
 
 ### Mobile (iOS/Android)
-Environment variables are bundled at build time:
+When you run `npx expo prebuild`, Expo copies environment variables into the native projects. Make sure `.env` (or `.env.production`) is configured **before** running prebuild or building with Xcode/Gradle.
+
 ```bash
-# EAS Build environment variables
-# Set in eas.json or EAS Secrets
-{
-  "build": {
-    "production": {
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://your-project.supabase.co"
-      }
-    }
-  }
-}
+# Generate native projects with current env values
+npx expo prebuild --platform ios
+npx expo prebuild --platform android
+
+# If you change env vars later, re-run prebuild or manually update:
+# iOS: ios/QuickTranslate/Supporting/Expo.plist
+# Android: android/app/src/main/res/xml/app.config.json
 ```
 
 ---
@@ -284,39 +281,7 @@ vercel env ls
 vercel env rm EXPO_PUBLIC_SUPABASE_URL production
 ```
 
-### EAS (Expo Application Services)
-
-#### EAS Secrets
-```bash
-# Set secret for builds
-eas secret:create --scope project --name OPENAI_API_KEY --value sk-your-key
-
-# List secrets
-eas secret:list
-
-# Delete secret
 eas secret:delete --scope project --name OPENAI_API_KEY
-```
-
-#### EAS Build Configuration
-```json
-// eas.json
-{
-  "build": {
-    "development": {
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://dev-project.supabase.co"
-      }
-    },
-    "production": {
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://prod-project.supabase.co"
-      }
-    }
-  }
-}
-```
-
 ### GitHub Actions Secrets
 
 #### Repository Secrets
